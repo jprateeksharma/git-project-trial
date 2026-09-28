@@ -1,0 +1,48 @@
+name: Validate XML
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-xml:
+    name: XML Validation
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate XML files
+        shell: powershell
+        run: |
+          $xmlFiles = Get-ChildItem -Path . -Recurse -Filter *.xml
+
+          if ($xmlFiles.Count -eq 0) {
+              Write-Host "No XML files found."
+              exit 0
+          }
+
+          $failed = $false
+
+          foreach ($file in $xmlFiles) {
+              Write-Host "Checking: $($file.FullName)"
+
+              try {
+                  [xml](Get-Content -Path $file.FullName -Raw) | Out-Null
+                  Write-Host "PASS: $($file.Name)"
+              }
+              catch {
+                  Write-Host "FAIL: $($file.Name)"
+                  Write-Host $_.Exception.Message
+                  $failed = $true
+              }
+          }
+
+          if ($failed) {
+              Write-Error "One or more XML files are invalid."
+              exit 1
+          }
+
+          Write-Host "All XML files are valid."
